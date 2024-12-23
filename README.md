@@ -73,6 +73,7 @@ pip install mujoco
 
 3. Install Low-level Controller
 ```bash
+cd ~/ACR/pointfootGym/pointfootMujoco
 pip install pointfoot-sdk-lowlevel/python3/amd64/limxsdk-*-py3-none-any.whl
 ```
 
@@ -89,3 +90,11 @@ python simulator.py
 python rl_controller.py
 ```
 
+6. Run Robot-joystick
+
+If your policy has been successfully loaded in MuJoCo, launch the joystick to send commands.
+
+```bash
+git clone https://github.com/limxdynamics/robot-joystick.git
+./robot-joystick/robot-joystick
+```
