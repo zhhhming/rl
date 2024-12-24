@@ -58,6 +58,7 @@ This repository provides a template for training point-foot legged robots, built
     - By default, the loaded policy is the last model of the last run of the experiment folder.
     - Other runs/model iteration can be selected by setting `load_run` and `checkpoint` in the train config.
 3. Monitor Your Training:
+
 During training, you can visualize various metrics like rewards and loss using TensorBoard. To launch it, run the following command in the project's root directory:
 
 ```bash
