@@ -1,7 +1,7 @@
 import os
 import sys
 from typing import Dict
-
+#source ~/miniconda3/etc/profile.d/conda.sh
 import torch
 from isaacgym import gymtorch, gymapi, gymutil
 from isaacgym.torch_utils import *
