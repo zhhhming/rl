@@ -11,7 +11,7 @@ class PointFootRoughCfg(BaseConfig):
         episode_length_s = 20  # episode length in seconds
 
     class terrain:
-        mesh_type = 'trimesh'  # "heightfield" # none, plane, heightfield or trimesh
+        mesh_type = 'plane'  # "heightfield" # none, plane, heightfield or trimesh
         horizontal_scale = 0.1  # [m]
         vertical_scale = 0.005  # [m]
         border_size = 25  # [m]
@@ -138,6 +138,10 @@ class PointFootRoughCfg(BaseConfig):
     class rewards:
         class scales:
             action_rate = -0.01
+            tracking_lin_vel = 2.0  # 线速度跟随
+            tracking_ang_vel = 1.0  # 角速度跟随
+            orientation = -5.0  # 姿态控制
+            action_rate = -0.01  # 动作平滑
             ang_vel_xy = -0.05
             base_height = -2.0
             collision = -50.0

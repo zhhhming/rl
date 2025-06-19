@@ -32,7 +32,7 @@ class PointFoot:
         self.debug_viz = False
         self.init_done = False
         self._parse_cfg()
-        self.gym = gymapi.acquire_gym()
+        self.gym = gymapi.acquire_gym() #最顶层的操作接口
 
         self.sim_params = sim_params
         self.physics_engine = physics_engine
@@ -49,21 +49,21 @@ class PointFoot:
         # graphics device for rendering, -1 for no rendering
         self.graphics_device_id = self.sim_device_id
 
-        self.num_envs = cfg.env.num_envs
-        self.num_obs = cfg.env.num_propriceptive_obs
-        self.num_privileged_obs = cfg.env.num_privileged_obs
-        self.num_actions = cfg.env.num_actions
+        self.num_envs = cfg.env.num_envs #环境数量  这里好像就是单纯的数量咯
+        self.num_obs = cfg.env.num_propriceptive_obs #本体观测维度
+        self.num_privileged_obs = cfg.env.num_privileged_obs #特权观测维度
+        self.num_actions = cfg.env.num_actions #动作维度
 
         # optimization flags for pytorch JIT
         torch._C._jit_set_profiling_mode(False)
         torch._C._jit_set_profiling_executor(False)
 
         # allocate buffers
-        self.proprioceptive_obs_buf = torch.zeros(self.num_envs, self.num_obs, device=self.device, dtype=torch.float)
-        self.rew_buf = torch.zeros(self.num_envs, device=self.device, dtype=torch.float)
-        self.reset_buf = torch.ones(self.num_envs, device=self.device, dtype=torch.long)
-        self.episode_length_buf = torch.zeros(self.num_envs, device=self.device, dtype=torch.long)
-        self.time_out_buf = torch.zeros(self.num_envs, device=self.device, dtype=torch.bool)
+        self.proprioceptive_obs_buf = torch.zeros(self.num_envs, self.num_obs, device=self.device, dtype=torch.float) #单纯的张量记录，那这里也相当于每个环境记录自己的obs
+        self.rew_buf = torch.zeros(self.num_envs, device=self.device, dtype=torch.float) #这里和下面就是记录每个环境的一些参数吧  每个环境的奖励
+        self.reset_buf = torch.ones(self.num_envs, device=self.device, dtype=torch.long) #每个环境是否要重置
+        self.episode_length_buf = torch.zeros(self.num_envs, device=self.device, dtype=torch.long) #每个环境执行了多少步数
+        self.time_out_buf = torch.zeros(self.num_envs, device=self.device, dtype=torch.bool) #是否超时退出
         if self.num_privileged_obs is not None:
             self.privileged_obs_buf = torch.zeros(self.num_envs, self.num_privileged_obs, device=self.device,
                                                   dtype=torch.float)
@@ -73,7 +73,8 @@ class PointFoot:
         self.extras = {}
 
         # create envs, sim and viewer
-        self.create_sim()
+        self.create_sim()#sim就是一个物理模拟器。在gym下，里面包含一些物理参数，env在其中运行
+        #每个sim只有一个地面，每个env在这一个地面上进行物理空间划分，互相不接触，就有env共用一个地面
         self.gym.prepare_sim(self.sim)
 
         # todo: read from config
@@ -89,11 +90,11 @@ class PointFoot:
                 self.viewer, gymapi.KEY_ESCAPE, "QUIT")
             self.gym.subscribe_viewer_keyboard_event(
                 self.viewer, gymapi.KEY_V, "toggle_viewer_sync")
-        self._include_feet_height_rewards = self._check_if_include_feet_height_rewards()
+        self._include_feet_height_rewards = self._check_if_include_feet_height_rewards()#这个就是用于确定腿部高度会不会要用于计算奖励，就是去看使用的奖励函数名字里有没有feet height
         if not self.headless:
             self.set_camera(self.cfg.viewer.pos, self.cfg.viewer.lookat)
-        self._init_buffers()
-        self._prepare_reward_function()
+        self._init_buffers()#初始化一些状态张量，放在gpu上，具体用哪个还是自己定，需要自己手动更新
+        self._prepare_reward_function() #确定使用到那些奖励函数，把他们存起来，之后可以结合scale直接来用了，一一取出获得结果，结合scale权重，就能得到每一步的奖励
         self.init_done = True
 
     def get_observations(self):
@@ -101,12 +102,12 @@ class PointFoot:
 
     def get_privileged_observations(self):
         return self.privileged_obs_buf
-
+#重置了所有的环境
     def reset(self):
         """ Reset all robots"""
         self.reset_idx(torch.arange(self.num_envs, device=self.device))
         obs, privileged_obs, _, _, _ = self.step(
-            torch.zeros(self.num_envs, self.num_actions, device=self.device, requires_grad=False))
+            torch.zeros(self.num_envs, self.num_actions, device=self.device, requires_grad=False))#不施加动作的step
         return obs, privileged_obs
 
     def render(self, sync_frame_time=True):
@@ -211,7 +212,7 @@ class PointFoot:
                                    dim=1)
         self.time_out_buf = self.episode_length_buf > self.max_episode_length  # no terminal reward for time-outs
         self.reset_buf |= self.time_out_buf
-
+    #指定环境进行重置
     def reset_idx(self, env_ids):
         """ Reset some environments.
             Calls self._reset_dofs(env_ids), self._reset_root_states(env_ids), and self._resample_commands(env_ids)
@@ -351,12 +352,12 @@ class PointFoot:
         """
         self.up_axis_idx = 2  # 2 for z, 1 for y -> adapt gravity accordingly
         self.sim = self.gym.create_sim(self.sim_device_id, self.graphics_device_id, self.physics_engine,
-                                       self.sim_params)
+                                       self.sim_params) #创建sim 在哪个设备上，显卡编号，物理引擎，params里就是一些参数定义如重力，时间步等
         mesh_type = self.cfg.terrain.mesh_type
         if mesh_type in ['heightfield', 'trimesh']:
             self.terrain = Terrain(self.cfg.terrain, self.num_envs)
         if mesh_type == 'plane':
-            self._create_ground_plane()
+            self._create_ground_plane() #都一样就是创建好地形后，把地形再传给sim完成创建
         elif mesh_type == 'heightfield':
             self._create_heightfield()
         elif mesh_type == 'trimesh':
@@ -448,7 +449,7 @@ class PointFoot:
         #
         env_ids = (self.episode_length_buf % int(self.cfg.commands.resampling_time / self.dt) == 0).nonzero(
             as_tuple=False).flatten()
-        self._resample(env_ids)
+        self._resample(env_ids) #更新目标
         if self.cfg.commands.heading_command:
             forward = quat_apply(self.base_quat, self.forward_vec)
             heading = torch.atan2(forward[:, 1], forward[:, 0])
@@ -456,10 +457,10 @@ class PointFoot:
 
         if self.cfg.domain_rand.push_robots and (self.common_step_counter % self.cfg.domain_rand.push_interval == 0):
             self._push_robots()
-
+#重新定义目标
     def _resample(self, env_ids):
         self._resample_commands(env_ids)
-
+#随机重新定义新的目标
     def _resample_commands(self, env_ids):
         """ Randommly select commands of some environments
 
@@ -1092,9 +1093,26 @@ class PointFoot:
         self.feet_air_time += self.dt
 
     # ------------ reward functions----------------
+    def _reward_tracking_lin_vel(self):
+        """奖励线速度跟随"""
+        # 计算速度误差
+        lin_vel_error = torch.sum(torch.square(self.commands[:, :2] - self.base_lin_vel[:, :2]), dim=1)
+        return torch.exp(-lin_vel_error / self.cfg.rewards.tracking_sigma)
+
+    def _reward_tracking_ang_vel(self):
+        """奖励角速度跟随"""
+        # 计算yaw角速度误差
+        ang_vel_error = torch.square(self.commands[:, 2] - self.base_ang_vel[:, 2])
+        return torch.exp(-ang_vel_error / self.cfg.rewards.tracking_sigma)
+
     def _reward_ang_vel_xy(self):
         # Penalize xy axes base angular velocity
         return torch.sum(torch.square(self.base_ang_vel[:, :2]), dim=1)
+
+    def _reward_orientation(self):
+        """奖励正确的机身姿态（保持水平）"""
+        # 期望的重力方向是 [0, 0, -1]
+        return torch.sum(torch.square(self.projected_gravity[:, :2]), dim=1)
 
     def _reward_base_height(self):
         # Penalize base height away from target
