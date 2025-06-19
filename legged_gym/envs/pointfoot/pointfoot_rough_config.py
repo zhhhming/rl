@@ -11,7 +11,7 @@ class PointFootRoughCfg(BaseConfig):
         episode_length_s = 20  # episode length in seconds
 
     class terrain:
-        mesh_type = 'plane'  # "heightfield" # none, plane, heightfield or trimesh
+        mesh_type = 'trimesh'  # "heightfield" # none, plane, heightfield or trimesh
         horizontal_scale = 0.1  # [m]
         vertical_scale = 0.005  # [m]
         border_size = 25  # [m]
@@ -46,8 +46,8 @@ class PointFootRoughCfg(BaseConfig):
 
         class ranges:
             lin_vel_x = [-1.0, 1.0]  # min max [m/s]
-            lin_vel_y = [-0.2, 0.2]  # min max [m/s]
-            ang_vel_yaw = [-1, 1]  # min max [rad/s]
+            lin_vel_y = [-0.6, 0.6]  # min max [m/s]
+            ang_vel_yaw = [-1.0, 1.0]  # min max [rad/s]
             heading = [-3.14, 3.14]
 
     class init_state:
@@ -70,9 +70,9 @@ class PointFootRoughCfg(BaseConfig):
         control_type = 'P'  # P: position, V: velocity, T: torques
         # PD Drive parameters:
         stiffness = {
-            "abad_L_Joint": 40,
-            "hip_L_Joint": 40,
-            "knee_L_Joint": 40,
+            "abad_L_Joint": 50,
+            "hip_L_Joint": 50,
+            "knee_L_Joint": 50,
             "foot_L_Joint": 0.0,
             "abad_R_Joint": 40,
             "hip_R_Joint": 40,
@@ -80,9 +80,9 @@ class PointFootRoughCfg(BaseConfig):
             "foot_R_Joint": 0.0,
         }  # [N*m/rad]
         damping = {
-            "abad_L_Joint": 1.5,
-            "hip_L_Joint": 1.5,
-            "knee_L_Joint": 1.5,
+            "abad_L_Joint": 2.0,
+            "hip_L_Joint": 2.0,
+            "knee_L_Joint": 2.0,
             "foot_L_Joint": 0.0,
             "abad_R_Joint": 1.5,
             "hip_R_Joint": 1.5,
@@ -132,25 +132,26 @@ class PointFootRoughCfg(BaseConfig):
         randomize_base_com = True
         rand_com_vec = [0.03, 0.02, 0.03]
         push_robots = True
-        push_interval_s = 7
-        max_push_vel_xy = 1.
+        push_interval_s = 5
+        max_push_vel_xy = 1.5
 
     class rewards:
         class scales:
             action_rate = -0.01
-            tracking_lin_vel = 2.0  # 线速度跟随
-            tracking_ang_vel = 1.0  # 角速度跟随
-            orientation = -5.0  # 姿态控制
-            action_rate = -0.01  # 动作平滑
-            ang_vel_xy = -0.05
+            tracking_lin_vel = 3.5  # 线速度跟随
+            tracking_ang_vel = 2.5  # 角速度跟随
+            orientation = -3.0  # 姿态控制
+            action_rate = -0.005  # 动作平滑
+            ang_vel_xy = -0.02
             base_height = -2.0
             collision = -50.0
-            dof_acc = -2.5e-07
+            dof_acc = -1e-07
             feet_air_time = 0.0
             torque_limits = -0.1
-            torques = -2.5e-05
+            torques = -1e-05
             feet_distance = -100
-            survival = 1
+            survival = 2
+            foot_clearance = 0.3
 
         base_height_target = 0.62
         soft_dof_pos_limit = 0.95  # percentage of urdf limits, values above this limit are penalized
@@ -161,7 +162,7 @@ class PointFootRoughCfg(BaseConfig):
         min_feet_distance = 0.1
         min_feet_air_time = 0.25
         max_feet_air_time = 0.65
-        tracking_sigma = 0.25  # tracking reward = exp(-error^2/sigma)
+        tracking_sigma = 0.1  # tracking reward = exp(-error^2/sigma)
 
     class normalization:
         class obs_scales:
@@ -230,11 +231,11 @@ class PointFootRoughCfgPPO(BaseConfig):
         # training params
         value_loss_coef = 1.0
         use_clipped_value_loss = True
-        clip_param = 0.2
-        entropy_coef = 0.01
-        num_learning_epochs = 5
+        clip_param = 0.15
+        entropy_coef = 0.005
+        num_learning_epochs = 8
         num_mini_batches = 4  # mini batch size = num_envs*nsteps / nminibatches
-        learning_rate = 1.e-3  # 5.e-4
+        learning_rate = 5.e-4  # 5.e-4
         schedule = 'adaptive'  # could be adaptive, fixed
         gamma = 0.99
         lam = 0.95
@@ -248,7 +249,7 @@ class PointFootRoughCfgPPO(BaseConfig):
         max_iterations = 100000  # number of policy updates
 
         # logging
-        save_interval = 1000  # check for potential saves every this many iterations
+        save_interval = 100  # check for potential saves every this many iterations
         experiment_name = 'pointfoot_rough'
         run_name = ''
         # load and resume

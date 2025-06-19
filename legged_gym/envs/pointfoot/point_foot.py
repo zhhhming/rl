@@ -1136,6 +1136,17 @@ class PointFoot:
         return torch.sum(1. * (torch.norm(self.contact_forces[:, self.penalised_contact_indices, :], dim=-1) > 0.1),
                          dim=1)
 
+    def _reward_foot_clearance(self):
+        """奖励适当的抬脚高度"""
+        # 只在摆动相奖励抬脚
+        swing_mask = self.feet_air_time > 0.1
+        foot_heights = self.feet_height
+        # 目标高度根据地形调整
+        target_height = 0.08  # 可以根据地形难度动态调整
+        height_error = torch.abs(foot_heights - target_height)
+        reward = torch.exp(-height_error * 5.0) * swing_mask
+        return torch.mean(reward, dim=1)
+
     def _reward_torque_limits(self):
         # penalize torques too close to the limit
         return torch.sum(
